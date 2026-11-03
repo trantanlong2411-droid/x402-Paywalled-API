@@ -1,0 +1,29 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "x402-paywalled-api",
+  "main": "src/worker.mjs",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PAYMENT_LEDGER",
+        "class_name": "PaymentLedger"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "PaymentLedger"
+      ]
+    }
+  ],
+  "vars": {
+    "ATLANTIC_RPC_URL": "https://atlantic.dplabs-internal.com",
+    "TEST_USDC_ADDRESS": "0xE0BE08c77f415F577A1B3A9aD7a1Df1479564ec8",
+    "USDC_DOMAIN_NAME": "USDC",
+    "USDC_DOMAIN_VERSION": "2"
+  }
+}
