@@ -1,0 +1,25 @@
+name: Pharos x402 — post-deployment 402 gate and facilitator readiness
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  actual-deployed-worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Test actual Worker public routes and x402 402 responses
+        run: node scripts/smoke-deployed.mjs
+      - name: Archive deployed HTTP evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pharos-x402-deployed-readiness
+          path: proof/deployed-readiness.json
+          retention-days: 30
+          if-no-files-found: error
