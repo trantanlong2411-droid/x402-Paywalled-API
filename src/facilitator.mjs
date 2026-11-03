@@ -1,4 +1,4 @@
-import {Interface,Signature,Wallet,verifyTypedData,keccak256,toUtf8Bytes,getAddress} from 'ethers';
+import {Interface,Signature,Wallet,verifyTypedData,TypedDataEncoder,keccak256,toUtf8Bytes,getAddress} from 'ethers';
 import {CHAIN_ID,NETWORK,ROUTES,address,config} from './config.mjs';
 import {requirement} from './protocol.mjs';
 
@@ -8,6 +8,7 @@ export const ABI=new Interface([
  'function decimals() view returns(uint8)',
  'function balanceOf(address) view returns(uint256)',
  'function authorizationState(address,bytes32) view returns(bool)',
+ 'function DOMAIN_SEPARATOR() view returns(bytes32)',
  'function transferWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)',
  'event Transfer(address indexed from,address indexed to,uint256 amount)'
 ]);
@@ -109,15 +110,21 @@ export async function verifyPayment(payload,requirements,c,transport=rpc){
   mustHex(block);
   const code=await transport(c,'eth_getCode',[c.asset,block]);
   if(typeof code!=='string'||code==='0x')throw new PaymentError('Test USDC contract unavailable');
-  const [symbol,decimals,name,balance,used]=await Promise.all([
+  const [symbol,decimals,name,balance,used,domainSeparator]=await Promise.all([
    tokenRead(c,'symbol',[],block,transport),
    tokenRead(c,'decimals',[],block,transport),
    tokenRead(c,'name',[],block,transport),
    tokenRead(c,'balanceOf',[decoded.payer],block,transport),
-   tokenRead(c,'authorizationState',[decoded.payer,decoded.auth.nonce],block,transport)
+   tokenRead(c,'authorizationState',[decoded.payer,decoded.auth.nonce],block,transport),
+   tokenRead(c,'DOMAIN_SEPARATOR',[],block,transport)
   ]);
   if(String(symbol).toUpperCase()!=='USDC'||Number(decimals)!==6||
    String(name)!==c.domainName)throw new PaymentError('Test token metadata/domain mismatch');
+  const actualDomain=TypedDataEncoder.hashDomain({
+   name:c.domainName,version:c.domainVersion,chainId:CHAIN_ID,verifyingContract:c.asset
+  });
+  if(String(domainSeparator).toLowerCase()!==actualDomain.toLowerCase())
+   throw new PaymentError('Token DOMAIN_SEPARATOR does not match EIP-712 signature domain');
   if(Boolean(used))throw new PaymentError('Authorization nonce was already spent');
   if(BigInt(balance)<BigInt(decoded.auth.value))throw new PaymentError('Insufficient test USDC balance');
   // Simulate the exact calldata from the relayer; refuse a contract that lacks EIP-3009.
