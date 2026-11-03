@@ -1,5 +1,8 @@
 name: Pharos x402 — post-deployment 402 gate and facilitator readiness
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/verify-deployed.yml', 'DEPLOYMENT.md']
   workflow_dispatch:
 permissions:
   contents: read
