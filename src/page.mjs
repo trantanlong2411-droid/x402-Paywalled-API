@@ -67,7 +67,7 @@ code{color:#d1dcff;overflow-wrap:anywhere}footer{margin-top:35px;font-size:12px;
 <p class="small">A durable payment ledger prevents a previously consumed authorization from unlocking the API again. The client cannot force a 200 by submitting an arbitrary hash.</p>
 <h3>Network details</h3>
 <p>Pharos Atlantic Testnet<br><code>eip155:688689</code><br>Gas: PHRS (testnet)<br>Asset: configurable EIP-3009 test USDC</p>
-<p><a href="https://atlantic.pharosscan.xyz" target="_blank" rel="noopener">Atlantic explorer ↗</a></p>
+<p><a href="https://atlantic.pharosscan.xyz" target="_blank" rel="noopener">Atlantic explorer ↗</a></p><p><a href="https://faucet.circle.com/" target="_blank" rel="noopener">Claim Circle test USDC ↗</a></p><p><a href="https://pharos.faucetme.pro/" target="_blank" rel="noopener">Get PHRS for relayer gas ↗</a></p>
 </section>
 <section class="panel">
 <h2>04 / Reviewer guide</h2>
