@@ -2,7 +2,7 @@ import {getAddress,Wallet} from 'ethers';
 export const CHAIN_ID=688689;
 export const NETWORK='eip155:688689';
 export const RPC_DEFAULT='https://atlantic.dplabs-internal.com';
-export const USDC_DEFAULT='0xE0BE08c77f415F577A1B3A9aD7a1Df1479564ec8';
+export const USDC_DEFAULT='0xcfC8330f4BCAB529c625D12781b1C19466A9Fc8B';
 export const EXPLORER='https://atlantic.pharosscan.xyz/tx/';
 export const ROUTES={
  '/api/insights':{amount:'1000',price:'0.001',description:'Pharos Atlantic market insights',kind:'insights'},
