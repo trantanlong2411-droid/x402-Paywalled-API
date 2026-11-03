@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Wallet,TypedDataEncoder} from 'ethers';
+import {Wallet,TypedDataEncoder,Transaction,keccak256} from 'ethers';
 import {config,CHAIN_ID} from '../src/config.mjs';
 import {requirement} from '../src/protocol.mjs';
-import {ABI,TYPES,parseSignedPayment,verifyPayment,verifyReceipt} from '../src/facilitator.mjs';
+import {ABI,TYPES,parseSignedPayment,verifyPayment,verifyReceipt,settlePayment} from '../src/facilitator.mjs';
 function fixture(){
  const payer=Wallet.createRandom(),relay=Wallet.createRandom(),seller=Wallet.createRandom();
  const c=config({FACILITATOR_PRIVATE_KEY:relay.privateKey,PAY_TO_ADDRESS:seller.address,
@@ -107,4 +107,56 @@ test('receipt only accepted with matching real Transfer event and relayer transa
  assert.equal(verifyReceipt({...rec,status:'0x0'},tx,d,f.c,'1000'),false);
  assert.equal(verifyReceipt({...rec,logs:[]},tx,d,f.c,'1000'),false);
  assert.equal(verifyReceipt(rec,{...tx,from:f.payer.address},d,f.c,'1000'),false);
+});
+
+test('full mocked x402 signed settlement constructs a real signed relayer transaction and blocks replay',async()=>{
+ const f=fixture(),payment=await signed(f);
+ const initial=mock(f);
+ let rawTransaction=null,parsedTx=null,transactionHash=null;
+ const transfer=ABI.encodeEventLog(ABI.getEvent('Transfer'),[
+  f.payer.address,f.c.payTo,1000n]);
+ const transport=async(c,method,params=[])=>{
+  if(['eth_chainId','eth_blockNumber','eth_getCode','eth_call'].includes(method))
+   return initial.transport(c,method,params);
+  if(method==='eth_gasPrice')return '0x3b9aca00';
+  if(method==='eth_estimateGas')return '0x30d40';
+  if(method==='eth_getTransactionCount')return '0x4';
+  if(method==='eth_getBalance')return '0xde0b6b3a7640000';
+  if(method==='eth_sendRawTransaction'){
+   rawTransaction=params[0];parsedTx=Transaction.from(rawTransaction);
+   transactionHash=keccak256(rawTransaction);return transactionHash;
+  }
+  if(method==='eth_getTransactionReceipt')return {
+   status:'0x1',transactionHash,logs:[{
+    address:c.asset,topics:transfer.topics,data:transfer.data
+   }]
+  };
+  if(method==='eth_getTransactionByHash')return {
+   to:parsedTx.to,from:parsedTx.from,input:parsedTx.data,
+   hash:transactionHash
+  };
+  throw Error('Unexpected method '+method);
+ };
+ const used=new Set(),updates=[];
+ const ledger={async fetch(req){
+  const action=new URL(req.url).pathname,input=await req.json();
+  if(action==='/claim'){
+   if(used.has(input.id))return Response.json({claimed:false});
+   used.add(input.id);return Response.json({claimed:true});
+  }
+  updates.push(input);return Response.json({updated:true});
+ }};
+ const result=await settlePayment(payment,f.req,f.c,ledger,transport);
+ assert.equal(result.success,true,JSON.stringify(result));
+ assert.match(result.transaction,/^0x[0-9a-f]{64}$/);
+ assert.equal(result.network,'eip155:688689');
+ assert.equal(parsedTx.chainId,688689n);
+ assert.equal(parsedTx.from.toLowerCase(),f.relay.address.toLowerCase());
+ assert.equal(parsedTx.to.toLowerCase(),f.c.asset.toLowerCase());
+ assert.ok(parsedTx.data.startsWith('0xe3ee160e'));
+ assert.ok(updates.some(x=>x.status==='settled'));
+ assert.ok(!JSON.stringify(result).includes(f.relay.privateKey));
+ const duplicate=await settlePayment(payment,f.req,f.c,ledger,transport);
+ assert.equal(duplicate.success,false);
+ assert.match(duplicate.errorReason,/already used|reserved/);
 });
