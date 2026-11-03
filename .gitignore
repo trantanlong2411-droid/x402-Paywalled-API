@@ -1,0 +1,9 @@
+node_modules/
+bundle/
+.wrangler/
+.dev.vars
+.env
+.env.*
+.private_key
+*.pem
+proof/private*
