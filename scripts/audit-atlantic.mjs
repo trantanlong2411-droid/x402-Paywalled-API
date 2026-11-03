@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
+import {Interface,TypedDataEncoder} from 'ethers';
 import {config} from '../src/config.mjs';
 import {ABI,rpc} from '../src/facilitator.mjs';
 const candidates=[...new Set([
@@ -33,6 +34,19 @@ for(const asset of candidates){
   const used=await call('authorizationState',['0x1111111111111111111111111111111111111111','0x'+'11'.repeat(32)]);
   if(typeof used!=='boolean')throw Error('EIP3009 authorizationState not boolean');
   entry.eip3009=true;
+  const domainAbi=new Interface(['function DOMAIN_SEPARATOR() view returns(bytes32)','function version() view returns(string)']);
+  try{
+   const v=await rpc(c,'eth_call',[{to:c.asset,data:domainAbi.encodeFunctionData('version',[])},'latest']);
+   entry.domainVersion=String(domainAbi.decodeFunctionResult('version',v)[0]);
+  }catch{entry.domainVersion=null;}
+  try{
+   const hex=await rpc(c,'eth_call',[{to:c.asset,data:domainAbi.encodeFunctionData('DOMAIN_SEPARATOR',[])},'latest']);
+   const returned=domainAbi.decodeFunctionResult('DOMAIN_SEPARATOR',hex)[0];
+   entry.domainSeparator=returned;
+   entry.domainMatchesVersions=['1','2'].filter(v=>
+    TypedDataEncoder.hashDomain({name:entry.name,version:v,chainId:688689,verifyingContract:c.asset}).toLowerCase()===String(returned).toLowerCase());
+  }catch{entry.domainSeparator=null;entry.domainMatchesVersions=[];}
+
  }catch(e){entry.error=String(e.message||e).slice(0,170)}
  result.candidates.push(entry);
  console.log('ATLANTIC_USDC_CANDIDATE',JSON.stringify(entry));
