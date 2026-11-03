@@ -22,7 +22,7 @@
   ],
   "vars": {
     "ATLANTIC_RPC_URL": "https://atlantic.dplabs-internal.com",
-    "TEST_USDC_ADDRESS": "0xE0BE08c77f415F577A1B3A9aD7a1Df1479564ec8",
+    "TEST_USDC_ADDRESS": "0xcfC8330f4BCAB529c625D12781b1C19466A9Fc8B",
     "USDC_DOMAIN_NAME": "USDC",
     "USDC_DOMAIN_VERSION": "2"
   }
