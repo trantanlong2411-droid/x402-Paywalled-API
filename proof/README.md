@@ -1,5 +1,8 @@
 # Pharos x402 Paywalled API — evidence checklist
 
+**Observed production status (4 Nov 2026 local / 3 Nov UTC):** Cloudflare Worker is deployed and the live [GitHub Actions HTTP health check](https://github.com/trantanlong2411-droid/x402-Paywalled-API/actions/runs/41702141474) matched the expected Worker code/version and Atlantic chain ID 688689, but returned `configured:false`. The job correctly failed because the required encrypted Cloudflare secret `FACILITATOR_PRIVATE_KEY` is not set. The API must not claim a 402 signed-payment success until this secret, relayer PHRS and client test USDC have been configured and a real explorer receipt exists. The [latest unit/build workflow](https://github.com/trantanlong2411-droid/x402-Paywalled-API/actions/runs/41702242148) passed **11/11** tests, including a full mocked relayer settlement and replay rejection.
+
+
 **Challenge: Medium / Payments / x402 Paywalled API**
 
 - Live homepage / intended proof: https://x402-paywalled-api.trantanlong2411.workers.dev/
