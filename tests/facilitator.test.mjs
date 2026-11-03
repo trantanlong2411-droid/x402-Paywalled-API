@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Wallet} from 'ethers';
+import {Wallet,TypedDataEncoder} from 'ethers';
 import {config,CHAIN_ID} from '../src/config.mjs';
 import {requirement} from '../src/protocol.mjs';
 import {ABI,TYPES,parseSignedPayment,verifyPayment,verifyReceipt} from '../src/facilitator.mjs';
@@ -41,6 +41,10 @@ function mock(f,{balance=3000000n,nonceUsed=false,wrongChain=false,simulationFai
    if(parsed.name==='name')return ABI.encodeFunctionResult('name',[f.c.domainName]);
    if(parsed.name==='balanceOf')return ABI.encodeFunctionResult('balanceOf',[balance]);
    if(parsed.name==='authorizationState')return ABI.encodeFunctionResult('authorizationState',[nonceUsed]);
+   if(parsed.name==='DOMAIN_SEPARATOR')return ABI.encodeFunctionResult('DOMAIN_SEPARATOR',[
+    TypedDataEncoder.hashDomain({name:f.c.domainName,version:f.c.domainVersion,
+     chainId:CHAIN_ID,verifyingContract:f.c.asset})
+   ]);
    throw Error('Unexpected mock method '+parsed.name);
   }
   throw Error('Unexpected JSON RPC method '+method);
