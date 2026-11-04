@@ -27,6 +27,18 @@ if(!h.value.config.configured){
   livePaymentVerified:false}));
  throw Error('Worker deployed but self-hosted facilitator is not configured. This is NOT a 402 payment success.');
 }
+const sampleAddress='0x1111111111111111111111111111111111111111';
+const balance=await read('/api/balance?address='+sampleAddress);
+assert.equal(balance.res.status,200,'Deployed Worker must expose read-only USDC balance');
+assert.equal(balance.value.ok,true);
+assert.equal(balance.value.buyer.toLowerCase(),sampleAddress.toLowerCase());
+assert.equal(balance.value.asset.toLowerCase(),h.value.config.asset.toLowerCase());
+assert.match(balance.value.balanceUSDC,/^\\d+(?:\\.\\d+)?$/);
+assert.equal(balance.value.network,'eip155:688689');
+console.log('LIVE_BUYER_BALANCE_ENDPOINT_VERIFIED',JSON.stringify({
+  network:balance.value.network,contract:balance.value.asset,
+  sampleTokenBalanceUSDC:balance.value.balanceUSDC,block:balance.value.block
+}));
 const supported=await read('/supported');
 assert.equal(supported.res.status,200);
 assert.ok(supported.value.kinds.some(x=>x.network==='eip155:688689'&&x.scheme==='exact'));
