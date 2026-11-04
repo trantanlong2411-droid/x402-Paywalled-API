@@ -39,6 +39,8 @@ code{color:#d1dcff;overflow-wrap:anywhere}footer{margin-top:35px;font-size:12px;
 <section class="panel">
 <div class="row"><h2>01 / API playground</h2><button id="connect" class="secondary">Connect testnet wallet</button></div>
 <p id="wallet" class="small">Wallet not connected.</p>
+<div class="banner" id="buyerBalance" role="status">Buyer balance not checked. Connect your wallet and select Check USDC balance after faucet.</div>
+<div class="actions"><button id="checkBalance" class="secondary">Check buyer USDC balance</button></div>
 <p id="configStatus" class="banner">Loading Worker configuration…</p>
 <div class="paid"><b>/health <span class="ok">FREE</span></b><small>Live endpoint and readiness without payment.</small>
 <div class="actions"><button id="health" class="secondary">Get free health</button></div></div>
@@ -129,7 +131,47 @@ code{color:#d1dcff;overflow-wrap:anywhere}footer{margin-top:35px;font-size:12px;
   wallet=accounts[0];$('wallet').textContent='Wallet: '+wallet+' · Atlantic Testnet';
   return wallet;
  }
- $('connect').onclick=async()=>{try{await ensureWallet();status('Connected on Atlantic Testnet.')}catch(e){status('Connection failed: '+e.message)}};
+ async function checkBuyerBalance(){
+  const target=$('buyerBalance');
+  try{
+   const account=await ensureWallet();
+   target.textContent='Checking USDC at the x402 contract on Atlantic…';
+   const res=await fetch('/api/balance?address='+encodeURIComponent(account),{cache:'no-store'});
+   const data=await res.json();
+   if(!res.ok||!data.ok)throw Error(data.error||'Balance unavailable');
+   const label='Buyer '+data.buyer+' · '+data.balanceUSDC+' USDC · '+data.balancePHRS+
+    ' PHRS · block '+data.block+'. ';
+   target.textContent=label+(data.eligibleForReport?
+    'Enough USDC for both paid routes.':
+    data.eligibleForInsights?
+      'Enough for 0.001 USDC insights, but not the 0.003 USDC report.':
+      'Not enough USDC for either paid route. Faucet to THIS exact buyer address on Pharos Testnet.');
+   target.className='banner '+(data.eligibleForInsights?'ok':'warn');
+   return data;
+  }catch(e){
+   target.className='banner warn';
+   target.textContent='Cannot check buyer balance: '+e.message;
+   return null;
+  }
+ }
+ $('connect').onclick=async()=>{
+  try{
+   await ensureWallet();status('Connected on Atlantic Testnet. Checking USDC balance…');
+   await checkBuyerBalance();
+  }catch(e){status('Connection failed: '+e.message)}
+ };
+ $('checkBalance').onclick=checkBuyerBalance;
+ if(window.ethereum?.on){
+  window.ethereum.on('accountsChanged',accounts=>{
+   wallet=null;
+   $('wallet').textContent=accounts.length?'Wallet account changed. Recheck balance.':'Wallet disconnected.';
+   $('buyerBalance').textContent='Wallet changed; click Check buyer USDC balance before paying.';
+  });
+  window.ethereum.on('chainChanged',()=>{
+   wallet=null;
+   $('buyerBalance').textContent='Network changed; reconnect on Atlantic Testnet.';
+  });
+ }
  async function paid(path){
   lastProof=null;$('linkBox').replaceChildren();
   if(!config?.configured){status('Facilitator is not ready. Connect Cloudflare payment secrets first.');return}
@@ -144,6 +186,12 @@ code{color:#d1dcff;overflow-wrap:anywhere}footer{margin-top:35px;font-size:12px;
      requirement.payTo.toLowerCase()!==config.payTo.toLowerCase())
     throw Error('Payment recipient or token differs from server configuration');
    const account=await ensureWallet();
+   const observed=await checkBuyerBalance();
+   if(!observed||observed.buyer.toLowerCase()!==account.toLowerCase())
+    throw Error('Could not verify the connected buyer wallet balance.');
+   if(!(path==='/api/report'?observed.eligibleForReport:observed.eligibleForInsights))
+    throw Error('Connected buyer has only '+observed.balanceUSDC+' USDC at contract '+observed.asset+
+      '. Confirm your Circle faucet recipient matches '+observed.buyer+' and retry after the balance appears.');
    const price=Number(requirement.amount)/1000000;
    if(!confirm('Authorize '+price+' TEST USDC on Pharos Atlantic to '+requirement.payTo+'? The facilitator will settle on-chain.'))return;
    const now=Math.floor(Date.now()/1000);
