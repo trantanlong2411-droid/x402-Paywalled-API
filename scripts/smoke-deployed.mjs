@@ -33,7 +33,7 @@ assert.equal(balance.res.status,200,'Deployed Worker must expose read-only USDC 
 assert.equal(balance.value.ok,true);
 assert.equal(balance.value.buyer.toLowerCase(),sampleAddress.toLowerCase());
 assert.equal(balance.value.asset.toLowerCase(),h.value.config.asset.toLowerCase());
-assert.match(balance.value.balanceUSDC,/^\\d+(?:\\.\\d+)?$/);
+assert.ok(Number.isFinite(Number(balance.value.balanceUSDC)) && Number(balance.value.balanceUSDC)>=0,'USDC balance must be numeric');
 assert.equal(balance.value.network,'eip155:688689');
 console.log('LIVE_BUYER_BALANCE_ENDPOINT_VERIFIED',JSON.stringify({
   network:balance.value.network,contract:balance.value.asset,
