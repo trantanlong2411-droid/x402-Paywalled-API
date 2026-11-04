@@ -3,6 +3,7 @@ import {config,publicConfig,ROUTES,NETWORK,EXPLORER} from './config.mjs';
 import {json,required,challenge,b64,unb64,paymentResponse} from './protocol.mjs';
 import {verifyPayment,verifyForRoute,settlePayment,parseSignedPayment} from './facilitator.mjs';
 import {PAGE} from './page.mjs';
+import {readBuyerBalance} from './balance.mjs';
 
 export const VERSION='pharos-x402-atlantic-2026-11-04-v1';
 const MAX_BODY=25000;
@@ -111,6 +112,17 @@ export default {
    path==='/facilitator/supported'||path==='/facilitator/verify'||path==='/facilitator/settle'){
    return facilitator(request,c,env,path.split('/').pop()==='supported'?'/supported':
     path.split('/').pop()==='verify'?'/verify':'/settle');
+  }
+  if(request.method==='GET'&&path==='/api/balance'){
+   try{
+    const buyer=url.searchParams.get('address');
+    if(!buyer||buyer.length>65)return json({ok:false,error:'A buyer EVM wallet address is required'},400);
+    return json(await readBuyerBalance(c,buyer));
+   }catch(e){
+    const msg=String(e?.message||e).slice(0,180);
+    const invalid=/valid nonzero EVM|buyer address/i.test(msg);
+    return json({ok:false,error:msg},invalid?400:503);
+   }
   }
   if(request.method==='GET'&&path==='/api/config')
    return json({version:VERSION,config:publicConfig(c),ready:c.ready,
